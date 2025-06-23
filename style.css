@@ -1,3 +1,4 @@
+/* Custom styling for Balaram Unicode Converter */
 html, body {
     background-color: #fffdf4;
     font-family: 'Georgia', serif;
@@ -7,23 +8,86 @@ html, body {
 h1, h2, h3 {
     color: #6d3600;
     text-align: center;
+    font-weight: bold;
 }
 
+/* Button styling */
 .stButton>button, .stDownloadButton>button {
-    background-color: #b06e11;
-    color: white;
+    background-color: #b06e11 !important;
+    color: white !important;
     font-weight: bold;
     border-radius: 8px;
     padding: 10px 20px;
+    border: none !important;
+    transition: background-color 0.3s ease;
 }
 
+.stButton>button:hover, .stDownloadButton>button:hover {
+    background-color: #8f5409 !important;
+    color: white !important;
+}
+
+/* File uploader styling */
 div[data-testid="stFileUploader"] {
     background-color: #fff5dc;
     border: 2px dashed #e0a958;
     padding: 20px;
     border-radius: 12px;
+    text-align: center;
 }
 
+div[data-testid="stFileUploader"] > div {
+    background-color: transparent;
+}
+
+/* Spinner styling */
+.stSpinner {
+    color: #b06e11 !important;
+}
+
+/* Success/Info/Warning message styling */
+.stSuccess {
+    background-color: #e8f5e8;
+    border-left: 4px solid #4caf50;
+}
+
+.stInfo {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+}
+
+.stWarning {
+    background-color: #fff3e0;
+    border-left: 4px solid #ff9800;
+}
+
+.stError {
+    background-color: #ffebee;
+    border-left: 4px solid #f44336;
+}
+
+/* Hide Streamlit footer */
 footer {
     visibility: hidden;
+}
+
+/* Hide hamburger menu */
+#MainMenu {
+    visibility: hidden;
+}
+
+/* Custom divider */
+hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #e0a958, transparent);
+    margin: 20px 0;
+}
+
+/* Expander styling */
+.streamlit-expanderHeader {
+    background-color: #fff5dc;
+    border-radius: 8px;
+    color: #6d3600 !important;
+    font-weight: bold;
 }
