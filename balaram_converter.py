@@ -41,12 +41,16 @@ balaram_map = {
     'ß': 'Ḷ',   # vocalic L
     'Ý': 'Ẏ',   # Y with dot above
     'Ñ': 'Ṣ',   # retroflex S
-    
+
     # Special characters
     '~': 'ɱ',   # special m
-    "'": "'",   # curly apostrophe
+    "'": "'",   # straight apostrophe
     '…': '…',   # ellipsis
-    ''': ''',   # curly quote
+    '‘': "'",   # left single curly quote
+    '’': "'",   # right single curly quote
+    '“': '"',   # left double curly quote
+    '”': '"',   # right double curly quote
+
 }
 
 def convert_balaram_to_unicode(text: str) -> str:
