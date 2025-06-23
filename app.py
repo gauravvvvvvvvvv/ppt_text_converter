@@ -290,7 +290,7 @@ with st.expander("ℹ️ How to use this converter"):
 
 # Sample conversion preview
 with st.expander("🔤 Preview: Balaram to Unicode conversion"):
-    sample_balarm = "Håñi Kåñëa Håñi Kåñëa, Kåñëa Kåñëa Håñi Håñi"
+    sample_balarm = "Hare Kåñëa Hare Kåñëa Kåñëa Kåñëa Hare Hare Hare Räma Hare Räma Räma Räma Hare Hare"
     sample_unicode = convert_balaram_to_unicode(sample_balarm)
     
     col1, col2 = st.columns(2)
