@@ -1,0 +1,29 @@
+html, body {
+    background-color: #fffdf4;
+    font-family: 'Georgia', serif;
+    color: #4b2e0f;
+}
+
+h1, h2, h3 {
+    color: #6d3600;
+    text-align: center;
+}
+
+.stButton>button, .stDownloadButton>button {
+    background-color: #b06e11;
+    color: white;
+    font-weight: bold;
+    border-radius: 8px;
+    padding: 10px 20px;
+}
+
+div[data-testid="stFileUploader"] {
+    background-color: #fff5dc;
+    border: 2px dashed #e0a958;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+footer {
+    visibility: hidden;
+}
