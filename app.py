@@ -9,7 +9,22 @@ import zipfile
 import shutil
 import xml.etree.ElementTree as ET
 import tempfile
-from balaram_converter import convert_balaram_to_unicode
+
+# Balaram to Unicode conversion mapping
+balaram_map = {
+    'ä': 'ā', 'é': 'ī', 'ü': 'ū', 'å': 'ṛ', 'è': 'ṝ',
+    'ì': 'ṅ', 'ï': 'ñ', 'ö': 'ṭ', 'ò': 'ḍ', 'ë': 'ṇ',
+    'ç': 'ś', 'à': 'ṁ', 'ù': 'ḥ', 'ÿ': 'ḷ', 'û': 'ḹ',
+    'ý': 'ẏ', 'Ä': 'Ā', 'É': 'Ī', 'Ü': 'Ū', 'Å': 'Ṛ',
+    'È': 'Ṝ', 'Ì': 'Ṅ', 'Ï': 'Ñ', 'Ö': 'Ṭ', 'Ò': 'Ḍ',
+    'Ë': 'Ṇ', 'Ç': 'Ś', 'À': 'Ṁ', 'Ù': 'Ḥ', 'ß': 'Ḷ',
+    'Ý': 'Ẏ', '~': 'ɱ', "'": "'", '…': '…', ''': ''',
+    'ñ': 'ṣ', 'Ñ': 'Ṣ'
+}
+
+def convert_balaram_to_unicode(text: str) -> str:
+    """Convert Balaram font text to Unicode"""
+    return ''.join(balaram_map.get(char, char) for char in text)
 
 # Page configuration
 st.set_page_config(
@@ -102,7 +117,10 @@ def process_shape(shape):
     return conversions
 
 def unlock_pptx_file(pptx_bytes, filename):
-    """Remove protection from PPTX file by removing modifyVerifier elements"""
+    """
+    Remove protection from PPTX file by removing modifyVerifier elements
+    Integrated version combining both approaches for better reliability
+    """
     with tempfile.TemporaryDirectory() as temp_dir:
         zip_temp = os.path.join(temp_dir, "temp.zip")
         extract_path = os.path.join(temp_dir, "extract")
@@ -124,48 +142,32 @@ def unlock_pptx_file(pptx_bytes, filename):
         
         if os.path.exists(pres_xml):
             try:
-                # Register namespaces to preserve XML structure
-                namespaces = {
-                    'p': "http://schemas.openxmlformats.org/presentationml/2006/main",
-                    'a': "http://schemas.openxmlformats.org/drawingml/2006/main",
-                    'r': "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-                }
+                # Register namespace to maintain XML structure
+                ET.register_namespace('p', "http://schemas.openxmlformats.org/presentationml/2006/main")
                 
-                for prefix, uri in namespaces.items():
-                    ET.register_namespace(prefix, uri)
-                
-                # Parse XML
+                # Parse and modify XML
                 tree = ET.parse(pres_xml)
                 root = tree.getroot()
                 
-                # Remove modifyVerifier elements (protection)
+                # Remove modifyVerifier elements (your streamlined approach)
                 verifiers_removed = 0
+                for elem in root.findall('{http://schemas.openxmlformats.org/presentationml/2006/main}modifyVerifier'):
+                    root.remove(elem)
+                    verifiers_removed += 1
                 
-                # Try different XPath patterns to find modifyVerifier
-                patterns = [
-                    './/{http://schemas.openxmlformats.org/presentationml/2006/main}modifyVerifier',
-                    './/p:modifyVerifier',
-                    './/modifyVerifier'
-                ]
-                
-                for pattern in patterns:
-                    elements = root.findall(pattern)
-                    for elem in elements:
-                        parent = root.find(f'.//*[{elem.tag}]/..')
+                # Also check for protection without namespace (fallback)
+                for elem in root.findall('.//modifyVerifier'):
+                    try:
+                        parent = elem.getparent()
                         if parent is not None:
                             parent.remove(elem)
                             verifiers_removed += 1
-                        else:
-                            # Try direct removal from root
-                            try:
-                                root.remove(elem)
-                                verifiers_removed += 1
-                            except ValueError:
-                                pass
+                    except:
+                        pass
                 
                 if verifiers_removed > 0:
-                    # Write back with proper formatting
-                    tree.write(pres_xml, encoding='utf-8', xml_declaration=True, method='xml')
+                    # Write back the modified XML
+                    tree.write(pres_xml, encoding='utf-8', xml_declaration=True)
                     st.success(f"🔓 Successfully removed {verifiers_removed} protection element(s)")
                 else:
                     st.info("ℹ️ No protection elements found - file was not locked")
@@ -173,14 +175,19 @@ def unlock_pptx_file(pptx_bytes, filename):
             except Exception as e:
                 st.warning(f"⚠️ Could not modify protection in {filename}: {e}")
                 st.info("📝 Proceeding with conversion anyway...")
+        else:
+            st.info("ℹ️ No presentation.xml found - unusual file structure")
         
-        # Repack into PPTX
+        # Repack into PPTX (your approach - cleaner)
         try:
             output_zip = os.path.join(temp_dir, "unlocked.zip")
             shutil.make_archive(output_zip.replace('.zip', ''), 'zip', extract_path)
             
             with open(output_zip, 'rb') as f:
-                return f.read()
+                unlocked_bytes = f.read()
+                
+            st.success("✅ Successfully unlocked PPTX file")
+            return unlocked_bytes
                 
         except Exception as e:
             st.error(f"❌ Failed to repack PPTX: {e}")
