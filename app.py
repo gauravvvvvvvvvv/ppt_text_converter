@@ -5,6 +5,7 @@ from pptx.shapes.group import GroupShape
 from pptx.shapes.picture import Picture
 from io import BytesIO
 from balaram_converter import convert_balaram_to_unicode
+import os
 
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Balaram to Unicode", layout="centered")
