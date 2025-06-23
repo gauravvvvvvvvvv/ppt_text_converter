@@ -58,12 +58,15 @@ if uploaded_file:
     with st.spinner("🔄 Converting..."):
         result = convert_pptx(uploaded_file)
         st.success("✅ Conversion complete!")
-        st.download_button(
-            "📥 Download Converted PPTX",
-            result,
-            file_name="converted_balaram_unicode.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        )
+        original_name = os.path.splitext(uploaded_file.name)[0]
+    converted_filename = f"{original_name} (converted).pptx"
+
+    st.download_button(
+        "📥 Download Converted PPTX",
+        result,
+        file_name=converted_filename,
+        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
 
 # --- Footer ---
 st.markdown("<hr>", unsafe_allow_html=True)
