@@ -4,25 +4,22 @@ from pptx.table import Table
 from pptx.shapes.group import GroupShape
 from pptx.shapes.picture import Picture
 from io import BytesIO
-from balaram_converter import convert_balaram_to_unicode
 import os
 
-# --- Streamlit Page Config ---
+from balaram_converter import convert_balaram_to_unicode
+from unlocker import unlock_pptx_file
+
 st.set_page_config(page_title="Balaram to Unicode", layout="centered")
 
-# --- Load Custom CSS ---
+# Load simple style
 with open("style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# --- Title Only (No śloka or subtitle) ---
 st.markdown("<h1>📘 Balaram to Unicode PPTX Converter</h1>", unsafe_allow_html=True)
-
 st.divider()
 
-# --- File Upload ---
 uploaded_file = st.file_uploader("📂 Upload your .pptx file", type=["pptx"])
 
-# --- Converter Logic ---
 def convert_text_frame(tf):
     if tf:
         for para in tf.paragraphs:
@@ -38,14 +35,14 @@ def process_shape(shape):
     if isinstance(shape, Picture): return
     if shape.has_text_frame:
         convert_text_frame(shape.text_frame)
-    elif shape.shape_type == 19:  # Table
+    elif shape.shape_type == 19:
         convert_table(shape.table)
     elif isinstance(shape, GroupShape):
         for subshape in shape.shapes:
             process_shape(subshape)
 
-def convert_pptx(pptx_file):
-    prs = Presentation(pptx_file)
+def convert_pptx(pptx_bytes):
+    prs = Presentation(pptx_bytes)
     for slide in prs.slides:
         for shape in slide.shapes:
             process_shape(shape)
@@ -54,21 +51,23 @@ def convert_pptx(pptx_file):
     output.seek(0)
     return output
 
-# --- Conversion Trigger ---
 if uploaded_file:
-    with st.spinner("🔄 Converting..."):
-        result = convert_pptx(uploaded_file)
-        st.success("✅ Conversion complete!")
+    with st.spinner("🔓 Unlocking (if needed)..."):
+        unlocked_data = unlock_pptx_file(uploaded_file, uploaded_file.name)
+        unlocked_stream = BytesIO(unlocked_data)
+
+    with st.spinner("🔄 Converting Balaram to Unicode..."):
+        converted_stream = convert_pptx(unlocked_stream)
         original_name = os.path.splitext(uploaded_file.name)[0]
-    converted_filename = f"{original_name} (converted).pptx"
+        converted_name = f"{original_name} (converted).pptx"
 
-    st.download_button(
-        "📥 Download Converted PPTX",
-        result,
-        file_name=converted_filename,
-        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    )
+        st.success("✅ Done! Download your file below.")
+        st.download_button(
+            "📥 Download Converted PPTX",
+            converted_stream,
+            file_name=converted_name,
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        )
 
-# --- Footer ---
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown("<div style='text-align:center; font-size:16px;'>🌸 Hare Kṛṣṇa! All glories to Śrīla Prabhupāda. 🌸</div>", unsafe_allow_html=True)
