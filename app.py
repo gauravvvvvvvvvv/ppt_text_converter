@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_option('server.maxUploadSize', 500)  # Increase upload limit to 500MB
+
 from pptx import Presentation
 from pptx.table import Table
 from pptx.shapes.group import GroupShape
@@ -10,6 +12,7 @@ import shutil
 import xml.etree.ElementTree as ET
 import tempfile
 
+
 # Balaram to Unicode conversion mapping
 balaram_map = {
     'ä': 'ā', 'é': 'ī', 'ü': 'ū', 'å': 'ṛ', 'è': 'ṝ',
@@ -18,7 +21,7 @@ balaram_map = {
     'ý': 'ẏ', 'Ä': 'Ā', 'É': 'Ī', 'Ü': 'Ū', 'Å': 'Ṛ',
     'È': 'Ṝ', 'Ì': 'Ṅ', 'Ï': 'Ñ', 'Ö': 'Ṭ', 'Ò': 'Ḍ',
     'Ë': 'Ṇ', 'Ç': 'Ś', 'À': 'Ṁ', 'Ù': 'Ḥ', 'ß': 'Ḷ',
-    'Ý': 'Ẏ', '~': 'ɱ', "'": "'", '…': '…', ''': ''',
+    'Ý': 'Ẏ', '~': 'ɱ', "'": "'", '…': '…', '’': '’',
     'ñ': 'ṣ', 'Ñ': 'Ṣ'
 }
 
@@ -26,9 +29,6 @@ def convert_balaram_to_unicode(text: str) -> str:
     return ''.join(balaram_map.get(char, char) for char in text)
 
 st.set_page_config(page_title="Balaram to Unicode Converter", page_icon="📘", layout="centered")
-
-# Set maximum file upload size to 500 MB
-st.config.set_option('server.maxUploadSize', 500)
 
 # CSS styling
 def load_css():
