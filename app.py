@@ -12,16 +12,13 @@ import tempfile
 import time
 import hashlib
 
-# Path for lock and user tracking
 LOCK_FILE = "/tmp/pptx_converter_user.lock"
 
-# Helper to get unique device ID (stored locally via Streamlit session)
 def get_device_id():
     if "device_id" not in st.session_state:
         st.session_state.device_id = hashlib.md5(str(time.time()).encode()).hexdigest()[:10]
     return st.session_state.device_id
 
-# Ask name if not set
 if "user_name" not in st.session_state:
     st.session_state.user_name = None
 
@@ -39,10 +36,8 @@ if not st.session_state.user_name:
 CURRENT_USER = st.session_state.user_name
 DEVICE_ID = get_device_id()
 
-# Locking logic
 def is_locked():
     if os.path.exists(LOCK_FILE):
-        # Clear stale lock after 5 min
         if time.time() - os.path.getmtime(LOCK_FILE) > 300:
             os.remove(LOCK_FILE)
             return False
@@ -64,14 +59,12 @@ def release_lock():
     if os.path.exists(LOCK_FILE):
         os.remove(LOCK_FILE)
 
-# Lock gatekeeping
 if is_locked():
     current_user = get_lock_user()
     if current_user != CURRENT_USER:
-        st.warning(f"🚦 {current_user} is currently using the converter.\n\nPlease wait until they finish.")
+        st.warning(f"🚦 {current_user} is currently using the converter. Please wait.")
         st.stop()
 
-# ========== UI and Setup ==========
 st.set_page_config(page_title="Balaram to Unicode Converter", page_icon="📘", layout="centered")
 
 def load_css():
@@ -99,7 +92,6 @@ st.markdown(f"<p style='text-align: center; color: #6d3600;'>Welcome, <b>{CURREN
 uploaded_file = st.file_uploader("📂 Upload your .pptx file", type=["pptx"])
 just_unlock = st.checkbox("🔓 Only unlock file (no conversion)", value=False)
 
-# ========== Conversion Logic ==========
 balaram_map = {
     'ä': 'ā', 'é': 'ī', 'ü': 'ū', 'å': 'ṛ', 'è': 'ṝ', 'ì': 'ṅ', 'ï': 'ñ', 'ö': 'ṭ',
     'ò': 'ḍ', 'ë': 'ṇ', 'ç': 'ś', 'à': 'ṁ', 'ù': 'ḥ', 'ÿ': 'ḷ', 'û': 'ḹ', 'ý': 'ẏ',
@@ -180,22 +172,29 @@ def unlock_pptx_file(pptx_bytes, filename):
 
 def convert_pptx(pptx_bytes):
     try:
-        prs = Presentation(BytesIO(pptx_bytes))
+        with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as tmp_input:
+            tmp_input.write(pptx_bytes)
+            tmp_input.flush()
+            tmp_path = tmp_input.name
+
+        prs = Presentation(tmp_path)
         for slide in prs.slides:
             for shape in slide.shapes:
                 process_shape(shape)
-        output = BytesIO()
-        prs.save(output)
-        output.seek(0)
-        return output
-    except:
+
+        with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as tmp_output:
+            prs.save(tmp_output.name)
+            tmp_output.seek(0)
+            with open(tmp_output.name, 'rb') as f:
+                return BytesIO(f.read())
+
+    except Exception as e:
+        print(f"❌ Error during conversion: {e}")
         return None
 
-# ========== Processing ==========
 if uploaded_file is not None:
     try:
         acquire_lock(CURRENT_USER)
-
         file_bytes = uploaded_file.getvalue()
         st.write(f"📄 File size: `{len(file_bytes) / 1024**2:.2f} MB`")
         unlocked_bytes = unlock_pptx_file(file_bytes, uploaded_file.name)
@@ -226,14 +225,13 @@ if uploaded_file is not None:
     finally:
         release_lock()
 
-# ========== Info ==========
 with st.expander("ℹ️ How to use this converter"):
     st.markdown("""
-    1. Enter your name (first time only)  
-    2. Upload `.pptx` file  
-    3. Wait if someone else is using it  
-    4. Choose unlock or convert  
-    5. Download result  
+    1. Enter your name  
+    2. Upload a `.pptx` file  
+    3. Choose whether to unlock only or convert  
+    4. Download the result  
+    5. Only one user can process at a time  
     """)
 
 st.markdown(
