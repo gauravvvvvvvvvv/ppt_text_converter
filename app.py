@@ -18,14 +18,22 @@ balaram_map = {
     'ý': 'ẏ', 'Ä': 'Ā', 'É': 'Ī', 'Ü': 'Ū', 'Å': 'Ṛ',
     'È': 'Ṝ', 'Ì': 'Ṅ', 'Ï': 'Ñ', 'Ö': 'Ṭ', 'Ò': 'Ḍ',
     'Ë': 'Ṇ', 'Ç': 'Ś', 'À': 'Ṁ', 'Ù': 'Ḥ', 'ß': 'Ḷ',
-    'Ý': 'Ẏ', '~': 'ɱ', "'": "'", '…': '…', '’': '’',
+    'Ý': 'Ẏ', '~': 'ɱ', "'": "'", '…': '…', ''': ''',
     'ñ': 'ṣ', 'Ñ': 'Ṣ'
 }
 
 def convert_balaram_to_unicode(text: str) -> str:
     return ''.join(balaram_map.get(char, char) for char in text)
 
-st.set_page_config(page_title="Balaram to Unicode Converter", page_icon="📘", layout="centered")
+# Set page config with increased file upload limit
+st.set_page_config(
+    page_title="Balaram to Unicode Converter", 
+    page_icon="📘", 
+    layout="centered"
+)
+
+# Set maximum file upload size to 500 MB
+st.config.set_option('server.maxUploadSize', 500)
 
 # CSS styling
 def load_css():
@@ -49,9 +57,14 @@ load_css()
 # Header
 st.markdown("<h1>📘 Balaram to Unicode PPTX Converter</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #6d3600; font-style: italic;'>Convert your PowerPoint presentations from Balaram font to Unicode</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #8b4513; font-size: 14px;'>⚡ Now supports files up to 500 MB!</p>", unsafe_allow_html=True)
 
-# Upload
-uploaded_file = st.file_uploader("📂 Upload your .pptx file", type=["pptx"])
+# Upload with size limit message
+uploaded_file = st.file_uploader(
+    "📂 Upload your .pptx file (up to 500 MB)", 
+    type=["pptx"],
+    help="Maximum file size: 500 MB"
+)
 
 # Text conversion functions
 def convert_text_frame(tf):
@@ -121,42 +134,84 @@ def unlock_pptx_file(pptx_bytes, filename):
         except:
             return pptx_bytes
 
-# Convert PPTX
+# Convert PPTX with progress indicator
 def convert_pptx(pptx_bytes):
     try:
-        prs = Presentation(BytesIO(pptx_bytes))
-        for slide in prs.slides:
-            for shape in slide.shapes:
-                process_shape(shape)
-        output = BytesIO()
-        prs.save(output)
-        output.seek(0)
-        return output
-    except:
+        with st.spinner('Converting your presentation...'):
+            prs = Presentation(BytesIO(pptx_bytes))
+            total_slides = len(prs.slides)
+            
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            for i, slide in enumerate(prs.slides):
+                status_text.text(f'Processing slide {i+1} of {total_slides}')
+                for shape in slide.shapes:
+                    process_shape(shape)
+                progress_bar.progress((i + 1) / total_slides)
+            
+            status_text.text('Finalizing conversion...')
+            output = BytesIO()
+            prs.save(output)
+            output.seek(0)
+            
+            progress_bar.empty()
+            status_text.empty()
+            
+            return output
+    except Exception as e:
+        st.error(f"Conversion error: {str(e)}")
         return None
 
 # Processing logic
 if uploaded_file:
-    file_bytes = uploaded_file.read()
-    unlocked_bytes = unlock_pptx_file(file_bytes, uploaded_file.name)
-    converted_stream = convert_pptx(unlocked_bytes)
-    if converted_stream:
-        st.download_button(
-            label="📥 Download Converted PPTX",
-            data=converted_stream,
-            file_name=f"{os.path.splitext(uploaded_file.name)[0]}_unicode.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            use_container_width=True
-        )
+    # Display file information
+    file_size_mb = len(uploaded_file.read()) / (1024 * 1024)
+    uploaded_file.seek(0)  # Reset file pointer
+    
+    st.info(f"📄 File: {uploaded_file.name} ({file_size_mb:.2f} MB)")
+    
+    if file_size_mb > 500:
+        st.error("❌ File size exceeds 500 MB limit. Please upload a smaller file.")
     else:
-        st.error("❌ Conversion failed. Please check your file and try again.")
+        file_bytes = uploaded_file.read()
+        
+        with st.spinner('Unlocking presentation...'):
+            unlocked_bytes = unlock_pptx_file(file_bytes, uploaded_file.name)
+        
+        converted_stream = convert_pptx(unlocked_bytes)
+        
+        if converted_stream:
+            st.success("✅ Conversion completed successfully!")
+            st.download_button(
+                label="📥 Download Converted PPTX",
+                data=converted_stream,
+                file_name=f"{os.path.splitext(uploaded_file.name)[0]}_unicode.pptx",
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                use_container_width=True
+            )
+        else:
+            st.error("❌ Conversion failed. Please check your file and try again.")
 
 # Optional Help
 with st.expander("ℹ️ How to use this converter"):
     st.markdown("""
     1. **Upload** your PowerPoint (.pptx) file using the file uploader above  
-    2. **Wait** for automatic processing  
+    2. **Wait** for automatic processing (larger files may take longer)  
     3. **Download** your converted Unicode presentation  
+    
+    **File Size Limit:** Up to 500 MB  
+    **Supported Format:** .pptx files only  
+    **Processing Time:** Depends on file size and complexity  
+    """)
+
+# Performance tips
+with st.expander("🚀 Performance Tips"):
+    st.markdown("""
+    - **Large files (100+ MB)** may take several minutes to process
+    - **Complex presentations** with many shapes and text elements take longer
+    - **Stable internet connection** recommended for large uploads
+    - **Close other browser tabs** to free up memory during processing
     """)
 
 # Footer
