@@ -1,6 +1,4 @@
 import streamlit as st
-st.set_option('server.maxUploadSize', 500)  # Increase upload limit to 500MB
-
 from pptx import Presentation
 from pptx.table import Table
 from pptx.shapes.group import GroupShape
