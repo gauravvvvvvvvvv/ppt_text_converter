@@ -10,7 +10,7 @@ import shutil
 import xml.etree.ElementTree as ET
 import tempfile
 
-# Balaram to Unicode conversion map
+# Balaram to Unicode mapping
 balaram_map = {
     'ä': 'ā', 'é': 'ī', 'ü': 'ū', 'å': 'ṛ', 'è': 'ṝ',
     'ì': 'ṅ', 'ï': 'ñ', 'ö': 'ṭ', 'ò': 'ḍ', 'ë': 'ṇ',
@@ -27,7 +27,7 @@ def convert_balaram_to_unicode(text: str) -> str:
 
 st.set_page_config(page_title="Balaram to Unicode Converter", page_icon="📘", layout="centered")
 
-# Styling
+# CSS
 def load_css():
     st.markdown("""
     <style>
@@ -47,17 +47,13 @@ def load_css():
 
 load_css()
 
-# Header
 st.markdown("<h1>📘 Balaram to Unicode PPTX Converter</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #6d3600; font-style: italic;'>Convert or Unlock PowerPoint presentations from Balaram font to Unicode</p>", unsafe_allow_html=True)
 
-# Upload
 uploaded_file = st.file_uploader("📂 Upload your .pptx file", type=["pptx"])
-
-# Optional toggle
 just_unlock = st.checkbox("🔓 Only unlock file (no conversion)", value=False)
 
-# Helper functions
+# Core processing logic
 def convert_text_frame(tf):
     if tf and tf.text.strip():
         for para in tf.paragraphs:
@@ -135,52 +131,52 @@ def convert_pptx(pptx_bytes):
         prs.save(output)
         output.seek(0)
         return output
-    except:
+    except Exception as e:
+        print(f"Error converting PPTX: {e}")
         return None
 
-# Processing
-if uploaded_file:
-    file_bytes = uploaded_file.read()
-    st.write(f"📄 File size: `{len(file_bytes) / 1024**2:.2f} MB`")
+# Main run
+if uploaded_file is not None:
+    try:
+        file_bytes = uploaded_file.getvalue()
+        st.write(f"📄 File size: `{len(file_bytes) / 1024**2:.2f} MB`")
 
-    # Step 1: Unlock
-    unlocked_bytes = unlock_pptx_file(file_bytes, uploaded_file.name)
-    st.write(f"🔓 Unlocked size: `{len(unlocked_bytes) / 1024**2:.2f} MB`")
+        unlocked_bytes = unlock_pptx_file(file_bytes, uploaded_file.name)
+        st.write(f"🔓 Unlocked size: `{len(unlocked_bytes) / 1024**2:.2f} MB`")
 
-    # Step 2: Convert (if selected)
-    if just_unlock:
-        st.download_button(
-            label="📥 Download Unlocked PPTX",
-            data=unlocked_bytes,
-            file_name=f"{os.path.splitext(uploaded_file.name)[0]}_unlocked.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            use_container_width=True
-        )
-    else:
-        converted_stream = convert_pptx(unlocked_bytes)
-        if converted_stream:
+        if just_unlock:
             st.download_button(
-                label="📥 Download Converted PPTX",
-                data=converted_stream,
-                file_name=f"{os.path.splitext(uploaded_file.name)[0]}_unicode.pptx",
+                label="📥 Download Unlocked PPTX",
+                data=unlocked_bytes,
+                file_name=f"{os.path.splitext(uploaded_file.name)[0]}_unlocked.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                 use_container_width=True
             )
         else:
-            st.error("❌ Conversion failed. Please try a different file.")
+            converted_stream = convert_pptx(unlocked_bytes)
+            if converted_stream:
+                st.download_button(
+                    label="📥 Download Converted PPTX",
+                    data=converted_stream,
+                    file_name=f"{os.path.splitext(uploaded_file.name)[0]}_unicode.pptx",
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    use_container_width=True
+                )
+            else:
+                st.error("❌ Conversion failed. The PPTX may be corrupted or unsupported.")
+    except Exception as e:
+        st.error(f"❌ Something went wrong: {e}")
 
-# Help box
 with st.expander("ℹ️ How to use this converter"):
     st.markdown("""
-    1. **Upload** your `.pptx` file  
-    2. Optionally check “Only unlock file”  
-    3. **Download** your result  
+    1. **Upload** a `.pptx` file  
+    2. **Optionally check** "Only unlock file"  
+    3. **Download** your output file  
     """)
 
-# Footer
 st.markdown(
     "<div style='text-align:center; font-size:16px; margin-top: 20px; color: #6d3600;'>"
     "🌸 Hare Kṛṣṇa! All glories to Śrīla Prabhupāda. 🌸"
-    "</div>", 
+    "</div>",
     unsafe_allow_html=True
 )
