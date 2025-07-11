@@ -9,25 +9,71 @@ import zipfile
 import shutil
 import xml.etree.ElementTree as ET
 import tempfile
+import time
+import hashlib
 
-# Balaram to Unicode mapping
-balaram_map = {
-    'ä': 'ā', 'é': 'ī', 'ü': 'ū', 'å': 'ṛ', 'è': 'ṝ',
-    'ì': 'ṅ', 'ï': 'ñ', 'ö': 'ṭ', 'ò': 'ḍ', 'ë': 'ṇ',
-    'ç': 'ś', 'à': 'ṁ', 'ù': 'ḥ', 'ÿ': 'ḷ', 'û': 'ḹ',
-    'ý': 'ẏ', 'Ä': 'Ā', 'É': 'Ī', 'Ü': 'Ū', 'Å': 'Ṛ',
-    'È': 'Ṝ', 'Ì': 'Ṅ', 'Ï': 'Ñ', 'Ö': 'Ṭ', 'Ò': 'Ḍ',
-    'Ë': 'Ṇ', 'Ç': 'Ś', 'À': 'Ṁ', 'Ù': 'Ḥ', 'ß': 'Ḷ',
-    'Ý': 'Ẏ', '~': 'ɱ', "'": "'", '…': '…', '’': '’',
-    'ñ': 'ṣ', 'Ñ': 'Ṣ'
-}
+# Path for lock and user tracking
+LOCK_FILE = "/tmp/pptx_converter_user.lock"
 
-def convert_balaram_to_unicode(text: str) -> str:
-    return ''.join(balaram_map.get(char, char) for char in text)
+# Helper to get unique device ID (stored locally via Streamlit session)
+def get_device_id():
+    if "device_id" not in st.session_state:
+        st.session_state.device_id = hashlib.md5(str(time.time()).encode()).hexdigest()[:10]
+    return st.session_state.device_id
 
+# Ask name if not set
+if "user_name" not in st.session_state:
+    st.session_state.user_name = None
+
+def ask_for_name():
+    st.title("🧑 Who's using the converter?")
+    name = st.text_input("Enter your name (no password needed):")
+    if name.strip():
+        st.session_state.user_name = name.strip()
+        st.rerun()
+
+if not st.session_state.user_name:
+    ask_for_name()
+    st.stop()
+
+CURRENT_USER = st.session_state.user_name
+DEVICE_ID = get_device_id()
+
+# Locking logic
+def is_locked():
+    if os.path.exists(LOCK_FILE):
+        # Clear stale lock after 5 min
+        if time.time() - os.path.getmtime(LOCK_FILE) > 300:
+            os.remove(LOCK_FILE)
+            return False
+        return True
+    return False
+
+def get_lock_user():
+    try:
+        with open(LOCK_FILE, 'r') as f:
+            return f.read().strip()
+    except:
+        return None
+
+def acquire_lock(user):
+    with open(LOCK_FILE, "w") as f:
+        f.write(user)
+
+def release_lock():
+    if os.path.exists(LOCK_FILE):
+        os.remove(LOCK_FILE)
+
+# Lock gatekeeping
+if is_locked():
+    current_user = get_lock_user()
+    if current_user != CURRENT_USER:
+        st.warning(f"🚦 {current_user} is currently using the converter.\n\nPlease wait until they finish.")
+        st.stop()
+
+# ========== UI and Setup ==========
 st.set_page_config(page_title="Balaram to Unicode Converter", page_icon="📘", layout="centered")
 
-# CSS
 def load_css():
     st.markdown("""
     <style>
@@ -48,12 +94,23 @@ def load_css():
 load_css()
 
 st.markdown("<h1>📘 Balaram to Unicode PPTX Converter</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #6d3600; font-style: italic;'>Convert or Unlock PowerPoint presentations from Balaram font to Unicode</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; color: #6d3600;'>Welcome, <b>{CURRENT_USER}</b>! You're the active user.</p>", unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader("📂 Upload your .pptx file", type=["pptx"])
 just_unlock = st.checkbox("🔓 Only unlock file (no conversion)", value=False)
 
-# Core processing logic
+# ========== Conversion Logic ==========
+balaram_map = {
+    'ä': 'ā', 'é': 'ī', 'ü': 'ū', 'å': 'ṛ', 'è': 'ṝ', 'ì': 'ṅ', 'ï': 'ñ', 'ö': 'ṭ',
+    'ò': 'ḍ', 'ë': 'ṇ', 'ç': 'ś', 'à': 'ṁ', 'ù': 'ḥ', 'ÿ': 'ḷ', 'û': 'ḹ', 'ý': 'ẏ',
+    'Ä': 'Ā', 'É': 'Ī', 'Ü': 'Ū', 'Å': 'Ṛ', 'È': 'Ṝ', 'Ì': 'Ṅ', 'Ï': 'Ñ',
+    'Ö': 'Ṭ', 'Ò': 'Ḍ', 'Ë': 'Ṇ', 'Ç': 'Ś', 'À': 'Ṁ', 'Ù': 'Ḥ', 'ß': 'Ḷ',
+    'Ý': 'Ẏ', '~': 'ɱ', "'": "'", '…': '…', '’': '’', 'ñ': 'ṣ', 'Ñ': 'Ṣ'
+}
+
+def convert_balaram_to_unicode(text: str) -> str:
+    return ''.join(balaram_map.get(char, char) for char in text)
+
 def convert_text_frame(tf):
     if tf and tf.text.strip():
         for para in tf.paragraphs:
@@ -131,16 +188,16 @@ def convert_pptx(pptx_bytes):
         prs.save(output)
         output.seek(0)
         return output
-    except Exception as e:
-        print(f"Error converting PPTX: {e}")
+    except:
         return None
 
-# Main run
+# ========== Processing ==========
 if uploaded_file is not None:
     try:
+        acquire_lock(CURRENT_USER)
+
         file_bytes = uploaded_file.getvalue()
         st.write(f"📄 File size: `{len(file_bytes) / 1024**2:.2f} MB`")
-
         unlocked_bytes = unlock_pptx_file(file_bytes, uploaded_file.name)
         st.write(f"🔓 Unlocked size: `{len(unlocked_bytes) / 1024**2:.2f} MB`")
 
@@ -163,20 +220,24 @@ if uploaded_file is not None:
                     use_container_width=True
                 )
             else:
-                st.error("❌ Conversion failed. The PPTX may be corrupted or unsupported.")
+                st.error("❌ Conversion failed.")
     except Exception as e:
-        st.error(f"❌ Something went wrong: {e}")
+        st.error(f"❌ Error: {e}")
+    finally:
+        release_lock()
 
+# ========== Info ==========
 with st.expander("ℹ️ How to use this converter"):
     st.markdown("""
-    1. **Upload** a `.pptx` file  
-    2. **Optionally check** "Only unlock file"  
-    3. **Download** your output file  
+    1. Enter your name (first time only)  
+    2. Upload `.pptx` file  
+    3. Wait if someone else is using it  
+    4. Choose unlock or convert  
+    5. Download result  
     """)
 
 st.markdown(
     "<div style='text-align:center; font-size:16px; margin-top: 20px; color: #6d3600;'>"
-    "🌸 Hare Kṛṣṇa! All glories to Śrīla Prabhupāda. 🌸"
-    "</div>",
+    "🌸 Hare Kṛṣṇa! All glories to Śrīla Prabhupāda. 🌸</div>",
     unsafe_allow_html=True
 )
