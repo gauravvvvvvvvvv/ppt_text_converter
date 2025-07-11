@@ -172,6 +172,8 @@ div[data-testid="stFileUploader"]:hover::before {
 
 div[data-testid="stFileUploader"] > div {
     background-color: transparent !important;
+    color: #3b0a00 !important; /* deep reddish-black for contrast */
+    font-weight: bold;
 }
 
 /* Spinner styling */
